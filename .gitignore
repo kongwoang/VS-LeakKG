@@ -77,3 +77,6 @@ desktop.ini
 venv/
 env/
 .env
+
+# ----- editor / agent local state -----
+.claude/
