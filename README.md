@@ -122,9 +122,57 @@ A single `.zip` named **`VS-LeakKG_raw_datasets_YYYYMMDD.zip`** holds every
 raw archive the pipeline needs (~27.85 GiB, ZIP_STORED so it opens fast and
 adds no extra compression on top of the already-compressed sources).
 
-The archive is **not in Git**; obtain it from the project's backup storage
-or rebuild it from any prior pipeline run (see "Rebuilding the dataset
-archive" at the bottom of this file).
+The archive is **not in Git**. It lives in a **private Hugging Face dataset
+repo**:
+
+> https://huggingface.co/datasets/kongwoang/VS_LeakKG
+
+To download, you need:
+
+1. A Hugging Face account with read access to the repo (ask the project
+   owner to grant access).
+2. An HF token from https://huggingface.co/settings/tokens (Role: *Read* is
+   enough).
+
+Then:
+
+```bash
+# one-time setup
+pip install -U huggingface_hub
+huggingface-cli login                       # paste your token
+
+# download the zip into the current directory
+huggingface-cli download kongwoang/VS_LeakKG \
+    VS-LeakKG_raw_datasets_20260519.zip \
+    --repo-type dataset \
+    --local-dir .
+```
+
+Or, equivalently, from Python:
+
+```python
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id="kongwoang/VS_LeakKG",
+    repo_type="dataset",
+    filename="VS-LeakKG_raw_datasets_20260519.zip",
+    local_dir=".",
+)
+```
+
+For a **non-interactive download** (CI, scripts) set the token via env var
+instead of `huggingface-cli login`:
+
+```bash
+export HF_TOKEN=<your hf token>
+huggingface-cli download kongwoang/VS_LeakKG \
+    VS-LeakKG_raw_datasets_20260519.zip \
+    --repo-type dataset --local-dir .
+```
+
+If you do not have HF access, rebuild the archive yourself from any prior
+pipeline run (see "Rebuilding the dataset archive" at the bottom of this
+file).
 
 What's inside the .zip:
 
@@ -178,7 +226,7 @@ fresh download will not give byte-identical inputs.
 ## Quick start (Linux)
 
 ```bash
-# 1. Clone
+# 1. Clone the code
 git clone git@github.com:kongwoang/VS-LeakKG.git
 cd VS-LeakKG
 
@@ -195,13 +243,18 @@ conda install -y -c bioconda mmseqs2
 # 5. (Optional) Install Foldseek for 3D pocket clustering
 conda install -y -c bioconda foldseek
 
-# 6. Restore the raw datasets — either Path A or Path B above
-bash scripts/extract_datasets.sh /path/to/VS-LeakKG_raw_datasets_20260519.zip
+# 6. Download the dataset zip from Hugging Face
+pip install -U huggingface_hub
+huggingface-cli login       # paste your HF token (Role: Read)
+huggingface-cli download kongwoang/VS_LeakKG \
+    VS-LeakKG_raw_datasets_20260519.zip \
+    --repo-type dataset --local-dir .
 
 # 7. End-to-end reproduction (extract + graph build + audits in one command)
-bash scripts/reproduce.sh /path/to/VS-LeakKG_raw_datasets_20260519.zip
+bash scripts/reproduce.sh ./VS-LeakKG_raw_datasets_20260519.zip
 
 # …or run the stages manually:
+bash scripts/extract_datasets.sh ./VS-LeakKG_raw_datasets_20260519.zip
 bash scripts/overnight_run.sh
 bash scripts/run_mvp_audit.sh
 bash scripts/run_mvp1_audit.sh
@@ -221,8 +274,15 @@ pip install -e .
 # MMseqs2 Windows build at C:\Tools\mmseqs2\mmseqs\bin\mmseqs.exe is what
 # was used during development; install via Cygwin or use the conda binary.
 
+# download the dataset zip from Hugging Face
+pip install -U huggingface_hub
+huggingface-cli login        # paste your HF token (Role: Read)
+huggingface-cli download kongwoang/VS_LeakKG `
+    VS-LeakKG_raw_datasets_20260519.zip `
+    --repo-type dataset --local-dir .
+
 # restore data/raw/ from the dataset zip
-.\scripts\extract_datasets.ps1 -Zip "D:\path\to\VS-LeakKG_raw_datasets_20260519.zip"
+.\scripts\extract_datasets.ps1 -Zip ".\VS-LeakKG_raw_datasets_20260519.zip"
 
 # then run the audits
 python -m vsleakkg.run_overnight
