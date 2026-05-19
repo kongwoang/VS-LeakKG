@@ -1,0 +1,26 @@
+name: drugclip
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch
+  - pytorch-cuda
+  - rdkit=2022.9.5   # README explicitly pins this version
+  - lmdb
+  - tqdm
+  - numpy
+  - pandas
+  - pip
+  - pip:
+      - fairseq
+      # The DrugCLIP repo uses Uni-Mol; install via:
+      #   pip install git+https://github.com/dptech-corp/Uni-Mol.git#subdirectory=unimol
+# Notes:
+#   - Checkpoint must be downloaded manually from
+#     https://drive.google.com/drive/folders/1zW1MGpgunynFxTKXC2Q4RgWxZmg6CInV
+#   - Test data preprocessing requires py_scripts/write_dude_multi.py
+#     to materialize mols.lmdb + pocket.lmdb per target

@@ -1,0 +1,23 @@
+name: hypseek
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch
+  - pytorch-cuda
+  - rdkit
+  - openbabel        # Linux: apt-get install -y openbabel; conda-forge has it too
+  - pip
+  - pip:
+      - numpy
+      - scikit-bio==0.6.2
+      - biopandas
+      - git+https://github.com/dptech-corp/Uni-Core.git
+      - git+https://github.com/prody/ProDy.git
+# Notes:
+#   - HypSeek expects Linux (apt-get install openbabel, CUDA_VISIBLE_DEVICES=0, fp16).
+#   - Checkpoints (checkpoint_avg_41-50_{vs,rk}.pt) are NOT linked in README; manual TODO.
+#   - Uni-Core requires NVCC at build time on most systems.

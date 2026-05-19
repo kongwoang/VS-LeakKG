@@ -1,0 +1,21 @@
+name: ligunity
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch
+  - pytorch-cuda
+  - rdkit
+  - lmdb
+  - tqdm
+  - numpy
+  - pandas
+  - pip
+  - pip:
+      - fairseq
+      # Uni-Mol from git source as in DrugCLIP.
+# Test data + checkpoints: figshare 27966819 (training) and 29379161 (pocket structures).
+# Colab demo notebook: https://colab.research.google.com/drive/1F0QSPjkKKLAfBexmIQotcs-jm87ohHeG
