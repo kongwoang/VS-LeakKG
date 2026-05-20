@@ -134,37 +134,28 @@ To download, you need:
 2. An HF token from https://huggingface.co/settings/tokens (Role: *Read* is
    enough).
 
-Then:
-
-```bash
-# one-time setup
-pip install -U huggingface_hub
-huggingface-cli login                       # paste your token
-
-# download the zip into the current directory
-huggingface-cli download kongwoang/VS_LeakKG \
-    VS-LeakKG_raw_datasets_20260519.zip \
-    --repo-type dataset \
-    --local-dir .
-```
-
-Or, equivalently, from Python:
-
-```python
-from huggingface_hub import hf_hub_download
-hf_hub_download(
-    repo_id="kongwoang/VS_LeakKG",
-    repo_type="dataset",
-    filename="VS-LeakKG_raw_datasets_20260519.zip",
-    local_dir=".",
-)
-```
-
-For a **non-interactive download** (CI, scripts) set the token via env var
-instead of `huggingface-cli login`:
+The fastest path is the bundled fetcher — it reads the current version
+filename from `scripts/dataset_version.sh` / `scripts/_dataset_version.ps1`,
+so reproducing the **latest** release is always the same command:
 
 ```bash
 export HF_TOKEN=<your hf token>
+bash scripts/fetch_dataset.sh         # → _dataset_cache/<current version>.zip
+```
+
+```powershell
+$env:HF_TOKEN = '<your hf token>'
+.\scripts\fetch_dataset.ps1
+```
+
+Both are idempotent — re-running is a no-op once the zip is cached.
+
+If you'd rather invoke `huggingface-cli` yourself (e.g. to land the zip
+somewhere outside the repo):
+
+```bash
+pip install -U "huggingface_hub[cli]"
+huggingface-cli login                       # paste your token, or use HF_TOKEN
 huggingface-cli download kongwoang/VS_LeakKG \
     VS-LeakKG_raw_datasets_20260519.zip \
     --repo-type dataset --local-dir .
@@ -191,17 +182,21 @@ VS_LeakKG_proposal.pdf
 data_MANIFEST_run_specific.md
 ```
 
-After cloning the repo, run **one** of these to restore `data/raw/` and
-extract every inner archive into the `<dataset>/extracted/` layout the
-pipeline expects:
+After cloning the repo, restore `data/raw/` (extracts every inner archive
+into the `<dataset>/extracted/` layout the pipeline expects). With no
+argument, both scripts read the cached zip in `_dataset_cache/`:
 
 ```bash
-# Linux / macOS
+# Linux / macOS  (uses _dataset_cache/<current version>.zip)
+bash scripts/extract_datasets.sh
+
+# or pass an explicit path
 bash scripts/extract_datasets.sh /path/to/VS-LeakKG_raw_datasets_20260519.zip
 ```
 
 ```powershell
 # Windows / PowerShell
+.\scripts\extract_datasets.ps1
 .\scripts\extract_datasets.ps1 -Zip "D:\path\to\VS-LeakKG_raw_datasets_20260519.zip"
 ```
 
@@ -225,40 +220,43 @@ fresh download will not give byte-identical inputs.
 
 ## Quick start (Linux)
 
+After you've cloned the repo and set `HF_TOKEN`, the entire pipeline — download,
+extract, graph build, audits — runs from a single command:
+
 ```bash
-# 1. Clone the code
+# 1. Clone + environment
 git clone git@github.com:kongwoang/VS-LeakKG.git
 cd VS-LeakKG
-
-# 2. Create the conda environment
 conda env create -f environment.yml
 conda activate vsleakkg
-
-# 3. Install the package itself (editable)
 pip install -e .
+pip install -U "huggingface_hub[cli]"
 
-# 4. Install MMseqs2 (used for protein and PDBBind→ChEMBL clustering)
-conda install -y -c bioconda mmseqs2
+# 2. Tools
+conda install -y -c bioconda mmseqs2          # required
+conda install -y -c bioconda foldseek         # optional (3D pocket clustering)
 
-# 5. (Optional) Install Foldseek for 3D pocket clustering
-conda install -y -c bioconda foldseek
+# 3. One-shot reproduce
+export HF_TOKEN=<your hf token>
+bash scripts/reproduce.sh
+```
 
-# 6. Download the dataset zip from Hugging Face
-pip install -U huggingface_hub
-huggingface-cli login       # paste your HF token (Role: Read)
-huggingface-cli download kongwoang/VS_LeakKG \
-    VS-LeakKG_raw_datasets_20260519.zip \
-    --repo-type dataset --local-dir .
+`reproduce.sh` auto-fetches the current dataset zip from Hugging Face into
+`_dataset_cache/` if it isn't already there, then extracts, builds the graph,
+and runs both audit passes.
 
-# 7. End-to-end reproduction (extract + graph build + audits in one command)
-bash scripts/reproduce.sh ./VS-LeakKG_raw_datasets_20260519.zip
+To run the stages manually instead:
 
-# …or run the stages manually:
-bash scripts/extract_datasets.sh ./VS-LeakKG_raw_datasets_20260519.zip
-bash scripts/overnight_run.sh
+```bash
+bash scripts/fetch_dataset.sh                # download (idempotent)
+bash scripts/extract_datasets.sh             # restore data/raw/
+bash scripts/overnight_run.sh                # graph build
 bash scripts/run_mvp_audit.sh
 bash scripts/run_mvp1_audit.sh
 ```
+
+If you already have the zip on disk, point `reproduce.sh` at it:
+`bash scripts/reproduce.sh /path/to/VS-LeakKG_raw_datasets_20260519.zip`.
 
 All produced artifacts land under `data/processed/` and `outputs/` — both
 git-ignored by default.
@@ -271,18 +269,15 @@ The package is platform-agnostic; only the launchers differ:
 conda env create -f environment.yml
 conda activate vsleakkg
 pip install -e .
+pip install -U "huggingface_hub[cli]"
 # MMseqs2 Windows build at C:\Tools\mmseqs2\mmseqs\bin\mmseqs.exe is what
 # was used during development; install via Cygwin or use the conda binary.
 
-# download the dataset zip from Hugging Face
-pip install -U huggingface_hub
-huggingface-cli login        # paste your HF token (Role: Read)
-huggingface-cli download kongwoang/VS_LeakKG `
-    VS-LeakKG_raw_datasets_20260519.zip `
-    --repo-type dataset --local-dir .
+$env:HF_TOKEN = '<your hf token>'
 
-# restore data/raw/ from the dataset zip
-.\scripts\extract_datasets.ps1 -Zip ".\VS-LeakKG_raw_datasets_20260519.zip"
+# fetch + restore data/raw/
+.\scripts\fetch_dataset.ps1
+.\scripts\extract_datasets.ps1
 
 # then run the audits
 python -m vsleakkg.run_overnight
@@ -369,6 +364,10 @@ VS-LeakKG/
 │       ├── common.py
 │       └── prepare_smoke_inputs.py
 ├── scripts/                 shell + PowerShell launchers
+│   ├── dataset_version.sh / _dataset_version.ps1   <-- bump for new release
+│   ├── fetch_dataset.{sh,ps1}                       HF download
+│   ├── extract_datasets.{sh,ps1}                    restore data/raw/
+│   ├── reproduce.sh                                 end-to-end orchestrator
 │   ├── setup_data.sh
 │   ├── overnight_run.sh
 │   ├── run_mvp_audit.sh / run_mvp1_audit.sh
@@ -563,3 +562,8 @@ the recipe is:
 
    On a fast NTFS volume this takes ~30 s and produces a ~28 GiB zip with
    ZIP64 extensions (needed for the >4 GB BigBind archive).
+
+3. Upload the new zip to the Hugging Face dataset repo, then bump the
+   filename in **`scripts/dataset_version.sh`** (and its PowerShell mirror
+   `scripts/_dataset_version.ps1`) so the fetcher pulls the new release.
+   No other file needs to change.
